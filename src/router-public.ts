@@ -102,11 +102,15 @@ function buildConfigResponse(origin: string) {
     settings: {
       disableUserRegistration: false,
     },
+    experimentalClientFeatureFlags: ['fido2-vault-credentials'],
     _icon_service_url: buildIconServiceTemplate(origin),
     _icon_service_csp: buildIconServiceCsp(origin),
     featureStates: {
       'duo-redirect': true,
       'email-verification': true,
+      // Browser extensions only enable passkey vault storage/login UX when this
+      // server capability flag is exposed in /api/config.
+      'fido2-vault-credentials': true,
       'pm-19051-send-email-verification': false,
       'pm-19148-innovation-archive': true,
       'unauth-ui-refresh': true,
