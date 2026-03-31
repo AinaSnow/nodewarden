@@ -40,7 +40,14 @@ function resolveWebAuthnOrigin(request: Request): string {
 }
 
 function resolveWebAuthnRpId(request: Request): string {
-  return new URL(resolveWebAuthnOrigin(request)).hostname || rpIdFromUrl(request.url);
+  const hostname = new URL(resolveWebAuthnOrigin(request)).hostname || rpIdFromUrl(request.url);
+  if (!hostname) return rpIdFromUrl(request.url);
+  if (hostname === 'localhost' || /^[0-9.]+$/.test(hostname) || hostname.includes(':')) {
+    return hostname;
+  }
+  const parts = hostname.split('.');
+  if (parts.length <= 2) return hostname;
+  return parts.slice(-2).join('.');
 }
 
 function twoFactorRequiredResponse(message: string = 'Two factor required.'): Response {
@@ -91,7 +98,7 @@ export async function handleBeginPasskeyRegistration(request: Request, env: Env,
       challenge,
       rp: {
         id: resolveWebAuthnRpId(request),
-        name: 'NodeWarden',
+        name: 'Bitwarden',
       },
       user: {
         id: userId,
@@ -105,6 +112,14 @@ export async function handleBeginPasskeyRegistration(request: Request, env: Env,
       },
       timeout: 60000,
       attestation: 'none',
+      extensions: {
+        credProps: true,
+        prf: {
+          eval: {
+            first: challenge,
+          },
+        },
+      },
       excludeCredentials: passkeys.map((pk) => ({ type: 'public-key', id: pk.credentialId })),
     },
   });
@@ -197,6 +212,13 @@ export async function handleBeginPasskeyLogin(request: Request, env: Env): Promi
       rpId: resolveWebAuthnRpId(request),
       timeout: 60000,
       userVerification: 'preferred',
+      extensions: {
+        prf: {
+          eval: {
+            first: challenge,
+          },
+        },
+      },
       allowCredentials: passkeys.map((pk) => ({ type: 'public-key', id: pk.credentialId })),
     },
   });
